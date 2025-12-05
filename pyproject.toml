@@ -1,23 +1,41 @@
 [project]
-name = "awesome_project"
+name = "rust_gpu_knn"
 version = "0.1.0"
-description = "Add your description here"
+description = "GPU-accelerated batch point cloud KNN classifier using Rust"
 readme = "README.md"
 authors = [
     { name = "HernandoR", email = "lzhen.dev@outlook.com" }
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = [
-    "rootutils>=1.0.7",
+    "numpy>=1.20",
 ]
 
-[project.scripts]
-awesome_project = "awesome_project:main"
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "scikit-learn>=1.0",
+]
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
 
+[tool.maturin]
+features = ["pyo3/extension-module"]
+python-source = "python"
+module-name = "rust_gpu_knn"
 
 [[tool.uv.index]]
 url = "https://mirrors.cernet.edu.cn/pypi/web/simple"
