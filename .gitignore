@@ -13,3 +13,22 @@ doc/source/_apidoc
 doc/source/_auto_examples
 .vscode
 *.egg-info/
+
+# Rust
+target/
+Cargo.lock
+
+# Python
+__pycache__/
+*.so
+*.pyd
+dist/
+
+# IDE
+*.swp
+*.swo
+
+
+# Added by cargo
+
+/target

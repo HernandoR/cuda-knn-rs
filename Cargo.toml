@@ -1,0 +1,29 @@
+[package]
+name = "rust_gpu_knn"
+version = "0.1.0"
+edition = "2021"
+description = "GPU-accelerated batch point cloud KNN classifier"
+authors = ["HernandoR"]
+license = "MIT"
+
+[lib]
+name = "rust_gpu_knn"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+pyo3 = { version = "0.22", features = ["extension-module"] }
+numpy = "0.22"
+ndarray = "0.16"
+rayon = "1.10"
+ordered-float = "5.0"
+
+[dev-dependencies]
+approx = "0.5"
+
+[features]
+default = []
+cuda = []  # Enable CUDA support when available
+
+[profile.release]
+opt-level = 3
+lto = true
