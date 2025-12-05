@@ -9,7 +9,7 @@
 #![allow(clippy::type_complexity)]
 #![allow(clippy::useless_conversion)]
 
-use ndarray::{Array2, Array3, ArrayView3, Axis};
+use ndarray::{Array2, Array3, ArrayView1, ArrayView3, Axis};
 use numpy::{PyArray3, PyReadonlyArray3, ToPyArray};
 use ordered_float::OrderedFloat;
 use pyo3::exceptions::PyValueError;
@@ -66,18 +66,19 @@ impl Ord for Neighbor {
     }
 }
 
-/// Compute squared L2 distance between two points
+/// Compute squared L2 distance between two ndarray 1D views
 #[inline]
-fn l2_squared_distance(a: &[f32], b: &[f32]) -> f32 {
-    a.iter()
-        .zip(b.iter())
+fn l2_squared_distance_views(query: ArrayView1<f32>, train: ArrayView1<f32>) -> f32 {
+    query
+        .iter()
+        .zip(train.iter())
         .map(|(ai, bi)| (ai - bi).powi(2))
         .sum()
 }
 
 /// Find top-k nearest neighbors for a single query point
 fn find_topk_neighbors(
-    query: &[f32],
+    query: ArrayView1<f32>,
     train_coords: &ArrayView3<f32>,
     train_labels: &Array2<i64>,
     batch_idx: usize,
@@ -87,8 +88,8 @@ fn find_topk_neighbors(
     let mut neighbors: Vec<Neighbor> = Vec::with_capacity(n_train);
 
     for j in 0..n_train {
-        let train_point: Vec<f32> = train_coords.slice(ndarray::s![batch_idx, j, ..]).to_vec();
-        let dist = l2_squared_distance(query, &train_point);
+        let train_point = train_coords.slice(ndarray::s![batch_idx, j, ..]);
+        let dist = l2_squared_distance_views(query, train_point);
         let label = train_labels[[batch_idx, j]];
         neighbors.push(Neighbor::new(dist, j as i64, label));
     }
@@ -107,7 +108,7 @@ fn find_topk_neighbors(
 
 /// Find neighbors within distance threshold, limited to at most k neighbors
 fn find_range_topk_neighbors(
-    query: &[f32],
+    query: ArrayView1<f32>,
     train_coords: &ArrayView3<f32>,
     train_labels: &Array2<i64>,
     batch_idx: usize,
@@ -119,8 +120,8 @@ fn find_range_topk_neighbors(
 
     // First pass: collect all neighbors within threshold
     for j in 0..n_train {
-        let train_point: Vec<f32> = train_coords.slice(ndarray::s![batch_idx, j, ..]).to_vec();
-        let dist = l2_squared_distance(query, &train_point);
+        let train_point = train_coords.slice(ndarray::s![batch_idx, j, ..]);
+        let dist = l2_squared_distance_views(query, train_point);
 
         if dist <= distance_threshold {
             let label = train_labels[[batch_idx, j]];
@@ -275,8 +276,8 @@ impl GPUBatchPointCloudKNN {
             .map(|b| {
                 (0..n_test)
                     .map(|m| {
-                        let query: Vec<f32> = test_coords.slice(ndarray::s![b, m, ..]).to_vec();
-                        find_topk_neighbors(&query, &train_coords_view, train_labels, b, k)
+                        let query = test_coords.slice(ndarray::s![b, m, ..]);
+                        find_topk_neighbors(query, &train_coords_view, train_labels, b, k)
                     })
                     .collect()
             })
@@ -365,9 +366,9 @@ impl GPUBatchPointCloudKNN {
             .map(|b| {
                 (0..n_test)
                     .map(|m| {
-                        let query: Vec<f32> = test_coords.slice(ndarray::s![b, m, ..]).to_vec();
+                        let query = test_coords.slice(ndarray::s![b, m, ..]);
                         find_range_topk_neighbors(
-                            &query,
+                            query,
                             &train_coords_view,
                             train_labels,
                             b,
@@ -406,16 +407,16 @@ fn rust_gpu_knn(m: &Bound<'_, PyModule>) -> PyResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::Array3;
+    use ndarray::{Array1, Array3};
 
     #[test]
     fn test_l2_squared_distance() {
-        let a = vec![0.0, 0.0, 0.0];
-        let b = vec![1.0, 0.0, 0.0];
-        assert!((l2_squared_distance(&a, &b) - 1.0).abs() < 1e-6);
+        let a = Array1::from_vec(vec![0.0, 0.0, 0.0]);
+        let b = Array1::from_vec(vec![1.0, 0.0, 0.0]);
+        assert!((l2_squared_distance_views(a.view(), b.view()) - 1.0).abs() < 1e-6);
 
-        let c = vec![1.0, 1.0, 1.0];
-        assert!((l2_squared_distance(&a, &c) - 3.0).abs() < 1e-6);
+        let c = Array1::from_vec(vec![1.0, 1.0, 1.0]);
+        assert!((l2_squared_distance_views(a.view(), c.view()) - 3.0).abs() < 1e-6);
     }
 
     #[test]
@@ -442,8 +443,9 @@ mod tests {
 
         let train_labels = Array2::<i64>::from_shape_vec((1, 5), vec![0, 1, 2, 3, 4]).unwrap();
 
-        let query = vec![0.1, 0.1]; // Close to point 0
-        let neighbors = find_topk_neighbors(&query, &train_coords.view(), &train_labels, 0, 3);
+        let query = Array1::from_vec(vec![0.1, 0.1]); // Close to point 0
+        let neighbors =
+            find_topk_neighbors(query.view(), &train_coords.view(), &train_labels, 0, 3);
 
         assert_eq!(neighbors.len(), 3);
         assert_eq!(neighbors[0].index, 0); // Closest should be point 0
@@ -465,10 +467,10 @@ mod tests {
 
         let train_labels = Array2::<i64>::from_shape_vec((1, 5), vec![0, 1, 2, 3, 4]).unwrap();
 
-        let query = vec![0.1, 0.1];
+        let query = Array1::from_vec(vec![0.1, 0.1]);
         // Threshold of 1.0 should include point 0 (dist ~0.02) but exclude others
         let neighbors = find_range_topk_neighbors(
-            &query,
+            query.view(),
             &train_coords.view(),
             &train_labels,
             0,
