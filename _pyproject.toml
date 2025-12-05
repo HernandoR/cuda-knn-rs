@@ -1,0 +1,24 @@
+[project]
+name = "awesome_project"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "HernandoR", email = "lzhen.dev@outlook.com" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "rootutils>=1.0.7",
+]
+
+[project.scripts]
+awesome_project = "awesome_project:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+
+[[tool.uv.index]]
+url = "https://mirrors.cernet.edu.cn/pypi/web/simple"
+default = true

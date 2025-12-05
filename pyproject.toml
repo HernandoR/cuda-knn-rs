@@ -1,24 +1,13 @@
-[project]
-name = "awesome_project"
-version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
-authors = [
-    { name = "HernandoR", email = "lzhen.dev@outlook.com" }
-]
-requires-python = ">=3.10"
-dependencies = [
-    "rootutils>=1.0.7",
-]
-
-[project.scripts]
-awesome_project = "awesome_project:main"
-
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["maturin>=1.10,<2.0"]
+build-backend = "maturin"
 
-
-[[tool.uv.index]]
-url = "https://mirrors.cernet.edu.cn/pypi/web/simple"
-default = true
+[project]
+name = "cuda_knn_rs"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
+dynamic = ["version"]
